@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Rubble v3.7 (Impact Edition)</title>
+    <title>Smart Rubble v3.8 (Trade Edition)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* --- THEME VARIABLES --- */
@@ -51,9 +51,89 @@
         .notification-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; position: relative; }
         .badge { position: absolute; top: 0; right: 0; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; border: 2px solid var(--teal-dark); display: none; }
 
-        .content { flex: 1; overflow-y: auto; background-color: var(--bg-app); }
+        .content { flex: 1; overflow-y: auto; background-color: var(--bg-app); position: relative;}
         .page { display: none; animation: fadeIn 0.3s; padding-bottom: 20px; }
         .page.active { display: block; }
+
+        /* --- CHAT / NEGOTIATION INTERFACE (NEW) --- */
+        .chat-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-app);
+            z-index: 50;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .chat-header {
+            background: var(--bg-container);
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .chat-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .msg-bubble {
+            max-width: 75%;
+            padding: 12px 15px;
+            border-radius: 18px;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .msg-in {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .msg-out {
+            background-color: var(--teal-primary);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .offer-bubble {
+            background-color: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            text-align: center;
+            align-self: center;
+            width: 80%;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 10px 0;
+        }
+
+        .chat-footer {
+            background: var(--bg-container);
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
 
         /* --- NOTIFICATION PANEL --- */
         .notification-panel { position: absolute; top: 60px; right: 10px; width: 300px; background: var(--bg-container); border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 100; display: none; padding: 10px; max-height: 400px; overflow-y: auto; }
@@ -105,7 +185,7 @@
         .report-icon { font-size: 20px; color: var(--teal-primary); display: flex; align-items: center; justify-content: center; }
         .report-badge { background-color: #dbeafe; color: #2563eb; font-size: 10px; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 4px; }
 
-        /* --- NEW ACTIVE REPORTS CARD STYLES --- */
+        /* --- ACTIVE REPORTS CARD STYLES --- */
         .ar-card {
             background: var(--card-bg);
             border-radius: 16px;
@@ -113,10 +193,11 @@
             box-shadow: var(--shadow);
             margin-bottom: 20px;
             border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
-            transition: transform 0.2s ease;
         }
         .ar-card:active { transform: scale(0.98); }
+        .ar-card:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.1); border-color: var(--teal-primary); }
 
         .ar-image-container {
             width: 100%;
@@ -181,7 +262,7 @@
             gap: 10px;
         }
 
-        /* --- SAFETY PAGE SPECIFIC STYLES (NEW) --- */
+        /* --- SAFETY PAGE SPECIFIC STYLES --- */
         .safety-card {
             background: var(--card-bg);
             border-radius: 16px;
@@ -250,6 +331,7 @@
         .list-item { background: var(--card-bg); margin: 15px; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow); }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes slideDown { from { top: 40px; opacity: 0; } to { top: 70px; opacity: 1; } }
     </style>
 </head>
@@ -268,9 +350,33 @@
                 <button class="zoom-btn" onclick="adjustZoom(-0.3)">➖ Zoom Out</button>
             </div>
         </div>
+        
+        <div id="chatOverlay" class="chat-screen">
+            <div class="chat-header">
+                <button class="btn-secondary" style="flex:0; width:40px; height:40px; border-radius:50%;" onclick="closeChat()">⬇</button>
+                <div style="flex:1">
+                    <div id="chatSellerName" style="font-weight:bold; font-size:14px;">Seller Name</div>
+                    <div id="chatContext" style="font-size:11px; color:var(--text-muted);">Offering for: Concrete Rubble</div>
+                </div>
+                <div style="background:var(--status-approved-bg); color:var(--status-approved-text); padding:5px 10px; border-radius:20px; font-size:11px; font-weight:bold;">Active</div>
+            </div>
+            
+            <div id="chatHistory" class="chat-body">
+                <div class="msg-bubble msg-in">Hello, the rubble is ready for collection.</div>
+            </div>
+
+            <div class="chat-footer">
+                <div class="input-group">
+                    <span style="display:flex; align-items:center; background:var(--bg-app); padding:0 10px; border-radius:8px; border:1px solid var(--border-color); color:var(--text-muted);">$</span>
+                    <input type="number" id="offerAmount" placeholder="Amount" style="width:80px; padding:12px; border-radius:8px; border:1px solid var(--border-color); outline:none;">
+                    <input type="text" id="offerMessage" placeholder="Message..." style="flex:1; padding:12px; border-radius:8px; border:1px solid var(--border-color); outline:none;">
+                </div>
+                <button class="btn-action" onclick="sendOffer()">Send Offer</button>
+            </div>
+        </div>
 
         <div class="header">
-            <div style="font-weight:bold; font-size:18px;">♻️ Smart Rubble <span style="font-size:10px; opacity:0.8;">v3.7</span></div>
+            <div style="font-weight:bold; font-size:18px;">♻️ Smart Rubble <span style="font-size:10px; opacity:0.8;">v3.8</span></div>
             <button class="notification-btn" onclick="toggleNotifications()">
                 🔔 <span class="badge" id="notifBadge"></span>
             </button>
@@ -344,7 +450,7 @@
             </div>
 
             <div id="reports" class="page">
-                <h2 style="margin:15px;">New AI Report</h2>
+                <h2 style="margin:15px;">Make a report</h2>
                 <div style="padding: 0 15px;">
                     <div id="previewContainer" style="height:140px; background:#e5e7eb; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; color:gray;">
                         No Image Selected
@@ -365,7 +471,7 @@
                     <button class="btn-action" onclick="submitReport()">Submit Report</button>
                 </div>
                 
-                <h3 style="margin:20px 0 15px 15px;">Active Reports</h3>
+                <h3 style="margin:20px 0 15px 15px;">Active Reports (Tap to Negotiate)</h3>
                 <div id="reportsList" style="padding: 0 15px;"></div>
             </div>
 
@@ -549,6 +655,7 @@
         let currentImageData = "";
         let currentZoom = 1;
         let deletedNotifications = [];
+        let currentChatReportId = null;
         
         // --- DEMO REPORTS DATA (From Screenshot) ---
         let activeReports = [
@@ -556,6 +663,7 @@
                 id: 1,
                 location: "Al Rayyan Industrial Zone",
                 material: "Concrete & Brick",
+                seller: "Mohamed Ben Nasr",
                 tons: 35,
                 date: "Jan 28, 2026",
                 status: "Approved",
@@ -564,12 +672,13 @@
                 riskClass: "risk-low",
                 radiation: 0.09,
                 toxicity: 1,
-                image: "https://images.unsplash.com/photo-1590664216212-62e76309e8aa?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+                image: "rayan.jpeg" 
             },
             {
                 id: 2,
                 location: "West Bay Construction Site",
                 material: "Mixed Debris",
+                seller: "Mosaab Selmi",
                 tons: 18,
                 date: "Jan 30, 2026",
                 status: "Under Review",
@@ -578,7 +687,7 @@
                 riskClass: "", 
                 radiation: 0.35,
                 toxicity: 4,
-                image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+                image: "westbay.jpeg"
             }
         ];
 
@@ -753,35 +862,7 @@
             if(pId === 'stats') setTimeout(initChart, 100); 
         }
 
-        // --- CONTACT SELLER LOGIC ---
-        function contactSeller(reportId) {
-            const report = activeReports.find(r => r.id === reportId);
-            if (!report) return;
-
-            const amount = prompt(`Enter offer amount ($) for ${report.tons} tons of ${report.material} at ${report.location}:`);
-            if (amount === null) return; // Cancelled
-            
-            if (isNaN(amount) || amount <= 0) {
-                alert("Please enter a valid numeric amount.");
-                return;
-            }
-
-            const message = prompt(`Write a message to the seller:`, `I am interested in purchasing this rubble for $${amount}.`);
-            if (message === null) return;
-
-            showToast("Offer Sent to Seller!");
-            
-            // Log interaction in notifications
-            notifications.unshift({
-                id: Date.now(), 
-                title: "Offer Sent", 
-                text: `Offered $${amount} for ${report.location}`, 
-                page: "reports"
-            });
-            renderNotifications();
-        }
-
-        // --- NEW: RENDER ACTIVE REPORTS (Card Style) ---
+        // --- NEW CHAT / NEGOTIATION LOGIC ---
         function renderActiveReports() {
             const list = document.getElementById('reportsList');
             list.innerHTML = "";
@@ -792,9 +873,9 @@
                     : (report.risk ? `<span class="ar-risk" style="background:#fee2e2; color:#b91c1c;">${report.risk}</span>` : '');
 
                 const cardHTML = `
-                <div class="ar-card" onclick="contactSeller(${report.id})">
+                <div class="ar-card" onclick="openChat(${report.id})">
                     <div class="ar-image-container">
-                        <img src="${report.image}" class="ar-image">
+                        <img src="${report.image}" class="ar-image" onclick="event.stopPropagation(); openInspector('${report.image}')">
                     </div>
                     <div class="ar-body">
                         <div class="ar-header">
@@ -802,19 +883,82 @@
                             <span class="ar-status ${report.statusClass}">${report.status} <span style="font-size:12px;">${report.status === 'Approved' ? '✓' : ''}</span></span>
                         </div>
                         <div class="ar-meta-row">
-                            <span class="ar-subtitle">${report.material}</span>
+                            <span class="ar-subtitle">${report.material} • Seller: ${report.seller || "Site Manager"}</span>
                             ${riskBadge}
                         </div>
                         <div class="ar-details">
                             ${report.tons} Tons • ${report.date}
                         </div>
-                        <div style="font-size: 11px; color: var(--teal-primary); font-weight: bold; margin-top: 5px;">
-                            Click to Contact Seller ✉️
+                        <div style="font-size:10px; color:var(--teal-primary); font-weight:bold; text-align:right;">
+                            Tap to make offer 💬
                         </div>
                     </div>
                 </div>`;
                 list.innerHTML += cardHTML;
             });
+        }
+
+        function openChat(reportId) {
+            currentChatReportId = reportId;
+            const report = activeReports.find(r => r.id === reportId);
+            
+            document.getElementById('chatSellerName').innerText = report.seller || "Site Manager";
+            document.getElementById('chatContext').innerText = `Offering for: ${report.material} (${report.tons} Tons)`;
+            
+            // Reset chat history to default
+            document.getElementById('chatHistory').innerHTML = `
+                <div style="text-align:center; color:var(--text-muted); font-size:11px; margin-bottom:15px;">Today</div>
+                <div class="msg-bubble msg-in">Hello, the ${report.tons} tons of ${report.material} are ready. Are you interested?</div>
+            `;
+            
+            document.getElementById('offerAmount').value = "";
+            document.getElementById('offerMessage').value = "";
+            
+            document.getElementById('chatOverlay').style.display = 'flex';
+        }
+
+        function closeChat() {
+            document.getElementById('chatOverlay').style.display = 'none';
+        }
+
+        function sendOffer() {
+            const amount = document.getElementById('offerAmount').value;
+            const msg = document.getElementById('offerMessage').value;
+            
+            if (!amount) {
+                alert("Please enter an offer amount.");
+                return;
+            }
+
+            const chatHistory = document.getElementById('chatHistory');
+            
+            // Append User Message
+            if (msg) {
+                chatHistory.innerHTML += `<div class="msg-bubble msg-out">${msg}</div>`;
+            }
+            
+            // Append Offer Card
+            chatHistory.innerHTML += `
+                <div class="offer-bubble">
+                    <div style="font-size:11px; margin-bottom:5px;">OFFER SENT</div>
+                    <div style="font-size:24px; font-weight:bold;">$${amount}</div>
+                    <div style="font-size:11px; opacity:0.8;">Pending Review</div>
+                </div>
+            `;
+
+            // Scroll to bottom
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            // Simulate seller response
+            setTimeout(() => {
+                chatHistory.innerHTML += `<div class="msg-bubble msg-in">Thanks! I've received your offer of $${amount}. I'll discuss with the site supervisor and confirm shortly.</div>`;
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+                showToast("Offer Sent Successfully");
+            }, 1000);
+
+            // Clear inputs
+            document.getElementById('offerMessage').value = "";
+            document.getElementById('offerAmount').value = "";
         }
 
         function submitReport() {
@@ -826,7 +970,8 @@
             const newReport = {
                 id: Date.now(),
                 location: loc,
-                material: "Mixed Debris", // Default
+                seller: "You (Owner)",
+                material: "Mixed Debris", 
                 tons: tons,
                 date: "Just now",
                 status: "Pending",
