@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Rubble v3.4 (Fixed Markers)</title>
+    <title>Smart Rubble v3.7 (Impact Edition)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* --- THEME VARIABLES --- */
@@ -17,7 +17,16 @@
             --card-bg: #ffffff;
             --border-color: #e5e7eb;
             --shadow: 0 4px 6px rgba(0,0,0,0.05);
-            --accent-glass: #22d3ee; /* Cyan for Glass */
+            --accent-glass: #22d3ee; 
+            --orange-accent: #f97316;
+            
+            /* Status Colors from Screenshot */
+            --status-approved-bg: #dcfce7;
+            --status-approved-text: #166534;
+            --status-review-bg: #dbeafe;
+            --status-review-text: #1e40af;
+            --risk-low-bg: #ecfdf5;
+            --risk-low-text: #059669;
         }
 
         .dark-mode {
@@ -28,6 +37,10 @@
             --card-bg: #374151;
             --border-color: #4b5563;
             --shadow: 0 4px 6px rgba(0,0,0,0.3);
+            --status-approved-bg: #064e3b;
+            --status-approved-text: #a7f3d0;
+            --status-review-bg: #1e3a8a;
+            --status-review-text: #bfdbfe;
         }
 
         /* --- CORE LAYOUT --- */
@@ -46,60 +59,195 @@
         .notification-panel { position: absolute; top: 60px; right: 10px; width: 300px; background: var(--bg-container); border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 100; display: none; padding: 10px; max-height: 400px; overflow-y: auto; }
         .notif-item { padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 13px; transition: 0.2s; }
         .notif-item:hover { background: rgba(0,0,0,0.02); }
-        .notif-actions button { border: none; background: none; cursor: pointer; font-size: 16px; margin-left: 5px; }
-
-        /* --- IMAGE INSPECTOR --- */
-        #imageModal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; flex-direction: column; justify-content: center; align-items: center; }
-        .zoom-controls { position: absolute; bottom: 50px; display: flex; gap: 20px; }
-        .zoom-btn { background: white; border: none; padding: 12px 20px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-
+        
         /* --- HOME SECTION --- */
         .stats-card { background: linear-gradient(to bottom right, #eff6ff, #f0fdfa); padding: 20px; border-bottom: 1px solid var(--border-color); color: #1f2937; }
         .grid-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; }
         .stat-box { background: white; padding: 10px 5px; border-radius: 8px; text-align: center; font-size: 11px; box-shadow: var(--shadow); transition: all 0.3s ease; }
         .stat-box.updating { transform: scale(1.05); background-color: #ecfdf5; }
-
-        .map-wrapper { height: 250px; margin: 15px; border-radius: 15px; overflow: hidden; box-shadow: var(--shadow); position: relative; }
+        
+        .map-wrapper { height: 200px; margin: 15px; border-radius: 15px; overflow: hidden; box-shadow: var(--shadow); position: relative; }
         #map { height: 100%; width: 100%; }
 
         /* SEARCH & LIST */
         .search-container { padding: 0 15px; margin-top: 10px; }
         .search-input { width: 100%; padding: 10px 15px; border-radius: 50px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); box-sizing: border-box; outline: none; box-shadow: var(--shadow); }
         
-        .stock-item { display: flex; align-items: center; gap: 12px; }
+        .stock-item { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+        .stock-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid var(--bg-container); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        /* --- UPDATES & REPORTS STYLES --- */
+        .section-title { font-size: 16px; font-weight: bold; margin: 25px 0 10px 0; color: var(--text-main); }
         
-        /* UPDATED CSS FOR CIRCULAR LIST IMAGES */
-        .stock-img { 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; /* Makes it circular */
-            object-fit: cover; 
-            border: 3px solid var(--bg-container); /* White border */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Shadow for pop */
+        .update-card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 5px solid var(--orange-accent);
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .update-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .update-title { font-weight: bold; font-size: 14px; color: var(--text-main); }
+        .update-time { font-size: 11px; color: var(--text-muted); }
+        .update-text { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+        .report-card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border: 1px solid var(--border-color);
+        }
+        .report-icon { font-size: 20px; color: var(--teal-primary); display: flex; align-items: center; justify-content: center; }
+        .report-badge { background-color: #dbeafe; color: #2563eb; font-size: 10px; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-top: 4px; }
+
+        /* --- NEW ACTIVE REPORTS CARD STYLES --- */
+        .ar-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .ar-card:active { transform: scale(0.98); }
+
+        .ar-image-container {
+            width: 100%;
+            height: 150px;
+            background-color: #e5e7eb;
+            position: relative;
+        }
+        .ar-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .ar-body {
+            padding: 15px;
+        }
+        .ar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+        .ar-title {
+            font-weight: bold;
+            font-size: 15px;
+            color: var(--text-main);
+        }
+        .ar-status {
+            font-size: 10px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+        }
+        .status-approved { background-color: var(--status-approved-bg); color: var(--status-approved-text); }
+        .status-review { background-color: var(--status-review-bg); color: var(--status-review-text); }
+        
+        .ar-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .ar-subtitle { font-size: 12px; color: var(--text-muted); }
+        .ar-risk {
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+        .risk-low { background-color: var(--risk-low-bg); color: var(--risk-low-text); }
+        
+        .ar-details { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+        
+        .ar-metrics {
+            background-color: var(--bg-app);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .important-section { padding: 0 15px; margin-top: 20px; }
-        .important-card { background: var(--card-bg); padding: 12px; border-radius: 10px; border-left: 4px solid #f59e0b; margin-bottom: 10px; box-shadow: var(--shadow); font-size: 13px; }
+        /* --- SAFETY PAGE SPECIFIC STYLES (NEW) --- */
+        .safety-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+        .safety-bar-bg {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .safety-bar-fill {
+            height: 100%;
+            border-radius: 10px;
+        }
+        .equip-row {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: var(--bg-app);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .equip-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-right: 12px;
+        }
+        .req-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
 
-        /* --- SETTINGS & GAMIFICATION --- */
-        .profile-box { background: var(--teal-primary); color: white; margin: 15px; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
-        .xp-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.3); border-radius: 10px; margin-top: 10px; overflow: hidden; }
-        .xp-bar-fill { height: 100%; width: 70%; background: #fbbf24; border-radius: 10px; }
 
-        .settings-item { background: var(--card-bg); margin: 5px 15px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); cursor: pointer; }
-        
-        /* --- UI COMPONENTS --- */
-        .toast { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: #065f46; color: white; padding: 10px 25px; border-radius: 50px; font-size: 14px; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); animation: slideDown 0.3s; }
-        .list-item { background: var(--card-bg); margin: 15px; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow); }
-        
+        /* --- GENERAL UI --- */
         .btn-action { background: var(--teal-primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
         .btn-secondary { flex: 1; background: var(--bg-app); color: var(--text-main); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
 
         .bottom-nav { background: var(--bg-container); border-top: 1px solid var(--border-color); padding: 12px 0; display: flex; justify-content: space-around; }
         .nav-btn { background: none; border: none; display: flex; flex-direction: column; align-items: center; color: var(--text-muted); cursor: pointer; font-size: 10px; transition: 0.2s; }
         .nav-btn.active { color: var(--teal-primary); font-weight: bold; }
+        
+        /* --- IMAGE INSPECTOR --- */
+        #imageModal { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; flex-direction: column; justify-content: center; align-items: center; }
+        .zoom-controls { position: absolute; bottom: 50px; display: flex; gap: 20px; }
+        .zoom-btn { background: white; border: none; padding: 12px 20px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        .chart-container { position: relative; height: 250px; width: 95%; margin: 10px auto; }
+        /* --- SETTINGS & GAMIFICATION --- */
+        .profile-box { background: var(--teal-primary); color: white; margin: 15px; padding: 20px; border-radius: 15px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; overflow: hidden; }
+        .xp-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.3); border-radius: 10px; margin-top: 10px; overflow: hidden; }
+        .xp-bar-fill { height: 100%; width: 70%; background: #fbbf24; border-radius: 10px; }
+        .settings-item { background: var(--card-bg); margin: 5px 15px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); cursor: pointer; }
+        .toast { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: #065f46; color: white; padding: 10px 25px; border-radius: 50px; font-size: 14px; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); animation: slideDown 0.3s; }
+        .list-item { background: var(--card-bg); margin: 15px; padding: 15px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--shadow); }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideDown { from { top: 40px; opacity: 0; } to { top: 70px; opacity: 1; } }
@@ -109,7 +257,7 @@
 
     <div class="app-container">
         <div id="successToast" class="toast">✅ Action Successful!</div>
-
+        
         <div id="imageModal">
             <span style="position:absolute; top:20px; right:20px; color:white; font-size:30px; cursor:pointer;" onclick="closeInspector()">✕</span>
             <div style="overflow:hidden; width:90%; height:70%; display:flex; justify-content:center; align-items:center;">
@@ -122,7 +270,7 @@
         </div>
 
         <div class="header">
-            <div style="font-weight:bold; font-size:18px;">♻️ Smart Rubble <span style="font-size:10px; opacity:0.8;">v3.4</span></div>
+            <div style="font-weight:bold; font-size:18px;">♻️ Smart Rubble <span style="font-size:10px; opacity:0.8;">v3.7</span></div>
             <button class="notification-btn" onclick="toggleNotifications()">
                 🔔 <span class="badge" id="notifBadge"></span>
             </button>
@@ -137,8 +285,10 @@
 
         <div class="content">
             <div id="home" class="page active">
+                
                 <div class="stats-card">
                     <p style="margin:0;">Live Updates: You saved <span id="liveCO2" style="font-weight:bold; color:#0f766e">2.40</span> tons of CO₂</p>
+                    <p style="margin:0;">You made <span id="liveCO2" style="font-weight:bold; color:#0f766e">$6,733</span> in profit</p>
                     <div class="grid-stats">
                         <div class="stat-box" id="statReportsbox"><b id="liveReports">128</b><br>Reports</div>
                         <div class="stat-box" id="statTonsbox"><b id="liveTons">1,420</b><br>Tons</div>
@@ -151,17 +301,46 @@
                     <div id="map"></div>
                 </div>
 
-                <h3 style="margin: 20px 0 10px 15px;">Live Stocks & Locations</h3>
                 <div class="search-container">
-                    <input type="text" id="stockSearch" class="search-input" placeholder="🔍 Search materials (Glass, Concrete...)" onkeyup="filterStockList()">
+                    <input type="text" id="stockSearch" class="search-input" placeholder="🔍 Search materials..." onkeyup="filterStockList()">
+                </div>
+                <div id="stockList" style="padding: 10px 15px; max-height: 180px; overflow-y: auto;"></div>
+
+                <div style="padding: 0 15px;">
+                    <h3 class="section-title">Recent Updates</h3>
+                    
+                    <div class="update-card">
+                        <div class="update-header">
+                            <span class="update-title">Payment Received!</span>
+                            <span class="update-time">2 hours ago</span>
+                        </div>
+                        <div class="update-text">$3,420 paid for concrete rubble (462 tons actual weight)</div>
+                    </div>
+
+                    <div class="update-card">
+                        <div class="update-header">
+                            <span class="update-title">Material Booked</span>
+                            <span class="update-time">1 day ago</span>
+                        </div>
+                        <div class="update-text">Builder booked your metal. Logistics team scheduled for pickup tomorrow.</div>
+                    </div>
                 </div>
 
-                <div id="stockList" style="padding: 0 15px; padding-bottom: 20px;"></div>
-
-                <div class="important-section">
-                    <h4 style="margin: 0 0 10px 0; color: var(--teal-primary);">📌 Pinned Alerts</h4>
-                    <div id="importantList"></div>
+                <div style="padding: 0 15px; padding-bottom: 20px;">
+                    <h3 class="section-title">My Reports</h3>
+                    
+                    <div class="report-card">
+                        <div class="report-icon">
+                            🏗️
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; font-size: 14px; color: var(--text-main);">Concrete Debris</div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin: 2px 0;">Est: 450 tons (±10%)</div>
+                            <span class="report-badge">Logistics - Sorting</span>
+                        </div>
+                    </div>
                 </div>
+
             </div>
 
             <div id="reports" class="page">
@@ -185,34 +364,140 @@
                     <input type="number" id="tonInput" placeholder="Approx. Tons" style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border-color); box-sizing:border-box;">
                     <button class="btn-action" onclick="submitReport()">Submit Report</button>
                 </div>
-                <h3 style="margin:20px 0 0 15px;">Active Reports</h3>
-                <div id="reportsList"></div>
+                
+                <h3 style="margin:20px 0 15px 15px;">Active Reports</h3>
+                <div id="reportsList" style="padding: 0 15px;"></div>
             </div>
+
+            <div id="safety" class="page">
+                <h2 style="margin:20px;">Safety & Equipment</h2>
+                <div style="padding: 0 15px;">
+                    
+                    <div class="safety-card">
+                        <h3 style="margin:0 0 15px 0; font-size:16px; font-weight:bold;">⚠️ Live Safety Monitor</h3>
+                        
+                        <div style="margin-bottom:15px;">
+                            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold;">
+                                <span>☢️ Radiation Level</span>
+                                <span>0.12 µSv/h</span>
+                            </div>
+                            <div class="safety-bar-bg">
+                                <div class="safety-bar-fill" style="width:20%; background:#10b981;"></div>
+                            </div>
+                            <div style="font-size:10px; color:#9ca3af; margin-top:4px;">Safe Range: 0-0.5 µSv/h</div>
+                        </div>
+
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold;">
+                                <span>🧪 Toxication Level</span>
+                                <span>Level 2</span>
+                            </div>
+                            <div class="safety-bar-bg">
+                                <div class="safety-bar-fill" style="width:60%; background:#10b981;"></div>
+                            </div>
+                            <div style="font-size:10px; color:#9ca3af; margin-top:4px;">Safe Range: 0-3</div>
+                        </div>
+                    </div>
+
+                    <div class="safety-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <h3 style="margin:0; font-size:15px; font-weight:bold;">Overall Risk Assessment</h3>
+                            <span style="background:#dcfce7; color:#166534; font-size:10px; font-weight:bold; padding:4px 8px; border-radius:6px;">LOW RISK</span>
+                        </div>
+                        <div style="font-size:12px; color:var(--text-muted);">
+                            ✅ Safe for standard collection procedures with basic protective equipment.
+                        </div>
+                    </div>
+
+                    <h3 style="font-size:15px; margin: 20px 0 10px 0; font-weight:bold;">Recommended Equipment</h3>
+                    <div style="font-size:11px; color:gray; margin-bottom:10px;">Based on current site conditions and detected hazard levels</div>
+
+                    <div class="equip-row">
+                        <div class="equip-icon" style="background:#ccfbf1; color:#0f766e;">🧤</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:bold; font-size:14px;">Standard Gloves</div>
+                            <div style="font-size:11px; color:#ef4444; margin-top:2px;">
+                                <span class="req-dot" style="background:#ef4444;"></span>Required
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="equip-row">
+                        <div class="equip-icon" style="background:#fee2e2; color:#b91c1c;">⛑️</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:bold; font-size:14px;">Safety Helmet</div>
+                            <div style="font-size:11px; color:#ef4444; margin-top:2px;">
+                                <span class="req-dot" style="background:#ef4444;"></span>Required
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="equip-row">
+                        <div class="equip-icon" style="background:#fef3c7; color:#92400e;">🥾</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:bold; font-size:14px;">Steel-Toe Boots</div>
+                            <div style="font-size:11px; color:#ef4444; margin-top:2px;">
+                                <span class="req-dot" style="background:#ef4444;"></span>Required
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="equip-row">
+                        <div class="equip-icon" style="background:#ffedd5; color:#c2410c;">😷</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:bold; font-size:14px;">Basic Face Mask</div>
+                            <div style="font-size:11px; color:#9ca3af; margin-top:2px;">
+                                <span class="req-dot" style="background:#9ca3af;"></span>Optional
+                            </div>
+                        </div>
+                    </div>
+
+                     <div class="equip-row">
+                        <div class="equip-icon" style="background:#ffedd5; color:#c2410c;">🦺</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:bold; font-size:14px;">High-Vis Vest</div>
+                            <div style="font-size:11px; color:#ef4444; margin-top:2px;">
+                                <span class="req-dot" style="background:#ef4444;"></span>Required
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
 
             <div id="stats" class="page">
                 <h2 style="margin:20px;">Eco Analytics</h2>
-                <div class="list-item">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <span>Material Breakdown</span>
-                        <span style="font-weight:bold; color:var(--teal-primary)">Live Data</span>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="ecoChart"></canvas>
+                
+                <div style="padding: 0 15px;">
+                    <div style="background: linear-gradient(135deg, var(--teal-primary), var(--teal-dark)); color: white; padding: 25px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 10px 20px rgba(13, 148, 136, 0.25); position: relative; overflow: hidden;">
+                        <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+                        <div style="position: absolute; bottom: -20px; left: -20px; width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+                        
+                        <h3 style="margin: 0 0 20px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+                            🚀 Total Impact
+                        </h3>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div>
+                                <div style="font-size: 12px; opacity: 0.9; margin-bottom: 4px;">Money Made</div>
+                                <div style="font-size: 32px; font-weight: bold; letter-spacing: -1px;">$6,733</div>
+                            </div>
+                            <div style="text-align: right;">
+                                 <div style="font-size: 12px; opacity: 0.9; margin-bottom: 4px;">CO₂ Reduced</div>
+                                 <div style="font-size: 32px; font-weight: bold; letter-spacing: -1px;">2.40 T</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); font-size: 11px; opacity: 0.8; display: flex; justify-content: space-between;">
+                            <span>Since Jan 5th 2025</span>
+                            <span>Top 5% of Recyclers 🏆</span>
+                        </div>
                     </div>
                 </div>
-                <div class="list-item">
-                    <strong>Monthly Top Materials</strong>
-                    <div style="margin-top:10px;">
-                        <div style="margin-bottom:5px; display:flex; justify-content:space-between; font-size:12px;"><span>Concrete</span><span>55%</span></div>
-                        <div style="height:6px; background:#e5e7eb; border-radius:4px;"><div style="width:55%; height:100%; background:var(--teal-primary); border-radius:4px;"></div></div>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <div style="margin-bottom:5px; display:flex; justify-content:space-between; font-size:12px;"><span>Steel / Metal</span><span>25%</span></div>
-                        <div style="height:6px; background:#e5e7eb; border-radius:4px;"><div style="width:25%; height:100%; background:#f59e0b; border-radius:4px;"></div></div>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <div style="margin-bottom:5px; display:flex; justify-content:space-between; font-size:12px;"><span>Glass</span><span>15%</span></div>
-                        <div style="height:6px; background:#e5e7eb; border-radius:4px;"><div style="width:15%; height:100%; background:var(--accent-glass); border-radius:4px;"></div></div>
+                <div style="padding:0 15px;">
+                    <div class="chart-container" style="height:250px;">
+                        <canvas id="ecoChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -222,32 +507,27 @@
                     <button class="btn-secondary" style="flex:0; margin-right:10px;" onclick="switchPage('settings')">⬅</button>
                     <h2 style="margin:0;">Recycle Bin</h2>
                 </div>
-                <p style="padding:0 15px; color:gray; font-size:13px;">Recover deleted messages here.</p>
                 <div id="binList"></div>
             </div>
 
             <div id="settings" class="page">
                 <h2>Settings</h2>
                 <div id="profileSection"></div>
-                
                 <div class="settings-item">
                     <span>Dark Appearance</span>
                     <input type="checkbox" id="darkToggle" onchange="toggleDark()">
                 </div>
-                <div class="settings-item" onclick="openRecycleBin()">
+                 <div class="settings-item" onclick="openRecycleBin()">
                     <span>🗑️ Recycle Bin</span><span>›</span>
-                </div>
-                <div class="settings-item">
-                    <span>App Version</span><span style="color:var(--text-muted)">v3.4</span>
                 </div>
                 <div id="logoutSection"></div>
             </div>
 
-            <div id="auth" class="page">
+             <div id="auth" class="page">
                 <h2 id="authTitle" style="text-align:center; margin-top:40px;">Sign In</h2>
-                <div class="auth-form">
-                    <input type="email" placeholder="Email Address">
-                    <input type="password" placeholder="Password">
+                <div style="padding:20px; display:flex; flex-direction:column; gap:10px;">
+                    <input type="email" placeholder="Email Address" style="padding:12px; border-radius:8px; border:1px solid #ddd;">
+                    <input type="password" placeholder="Password" style="padding:12px; border-radius:8px; border:1px solid #ddd;">
                     <button class="btn-action" onclick="handleAuth()">Continue</button>
                     <button class="btn-action" style="background:gray;" onclick="switchPage('settings')">Cancel</button>
                 </div>
@@ -257,6 +537,7 @@
         <div class="bottom-nav">
             <button class="nav-btn active" onclick="switchPage('home')">🏠<br>Home</button>
             <button class="nav-btn" onclick="switchPage('reports')">📄<br>Reports</button>
+            <button class="nav-btn" onclick="switchPage('safety')">⛑️<br>Safety</button>
             <button class="nav-btn" onclick="switchPage('stats')">📈<br>Stats</button>
             <button class="nav-btn" onclick="switchPage('settings')">⚙️<br>Settings</button>
         </div>
@@ -267,9 +548,41 @@
         let isLoggedIn = false;
         let currentImageData = "";
         let currentZoom = 1;
-        let stats = { co2: 2.40, reports: 128, tons: 1420, reused: 14 };
+        let deletedNotifications = [];
         
-        // --- LOCATIONS DATA (12 Items) ---
+        // --- DEMO REPORTS DATA (From Screenshot) ---
+        let activeReports = [
+            {
+                id: 1,
+                location: "Al Rayyan Industrial Zone",
+                material: "Concrete & Brick",
+                tons: 35,
+                date: "Jan 28, 2026",
+                status: "Approved",
+                statusClass: "status-approved",
+                risk: "Low Risk",
+                riskClass: "risk-low",
+                radiation: 0.09,
+                toxicity: 1,
+                image: "https://images.unsplash.com/photo-1590664216212-62e76309e8aa?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
+            },
+            {
+                id: 2,
+                location: "West Bay Construction Site",
+                material: "Mixed Debris",
+                tons: 18,
+                date: "Jan 30, 2026",
+                status: "Under Review",
+                statusClass: "status-review",
+                risk: "Medium",
+                riskClass: "", 
+                radiation: 0.35,
+                toxicity: 4,
+                image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            }
+        ];
+
+        // --- FULL LOCATIONS DATA RESTORED ---
         let rubbleLocations = [
             { id: 1, name: "Concrete Rubble", lat: 25.2854, lng: 51.5310, tons: 45, distance: "2.3 km", score: 82, image: 'concrete.jpeg' },
             { id: 2, name: "Mixed Debris", lat: 25.2900, lng: 51.5400, tons: 32, distance: "1.8 km", score: 75, image: 'debris.jpeg' },
@@ -278,84 +591,51 @@
             { id: 5, name: "Brick Rubble", lat: 25.2820, lng: 51.5350, tons: 38, distance: "2.7 km", score: 88, image: 'brick.jpeg' },
             { id: 6, name: "Asphalt Chunks", lat: 25.2950, lng: 51.5200, tons: 60, distance: "4.5 km", score: 70, image: 'asphalt.jpeg' },
             { id: 7, name: "Timber Waste", lat: 25.2750, lng: 51.5450, tons: 15, distance: "3.8 km", score: 85, image: 'timber.jpeg' },
-            { id: 8, name: "Ceramic Tiles", lat: 25.2860, lng: 51.5150, tons: 8, distance: "2.1 km", score: 92, image: 'tiles.jpeg' },
-
+            { id: 8, name: "Ceramic Tiles", lat: 25.2860, lng: 51.5150, tons: 8, distance: "2.1 km", score: 92, image: 'ceramic.jpeg' },
         ];
 
         let notifications = [
-            { id: 1, title: "Welcome!", text: "Start reporting rubble to earn points.", page: "home", important: false }
+            { id: 1, title: "Welcome!", text: "Start reporting rubble to earn points.", page: "home" }
         ];
-        
-        let deletedNotifications = [];
 
         // --- CHART JS INIT ---
         let ecoChartInstance = null;
         function initChart() {
             const ctx = document.getElementById('ecoChart').getContext('2d');
             if (ecoChartInstance) ecoChartInstance.destroy();
-            
             ecoChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: ['Concrete', 'Metal', 'Glass'],
                     datasets: [{
-                        label: 'Recycled Volume (Tons)',
-                        data: [450, 200, 120],
+                        label: 'Recycled (Tons)',
+                        data: [1.2, 0.8, 0.4],
                         backgroundColor: ['#0d9488', '#f59e0b', '#22d3ee'],
                         borderRadius: 5
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
 
-        // --- CANVAS ICON GENERATOR (FIXES WHITE RING ISSUE) ---
+        // --- CANVAS ICON GENERATOR ---
         function createCircularIcon(imageUrl, callback) {
             const img = new Image();
-            img.crossOrigin = "Anonymous"; // Attempt to handle CORS
+            img.crossOrigin = "Anonymous";
             img.src = imageUrl;
-            
             img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const size = 60; // Icon size (px)
-                canvas.width = size;
-                canvas.height = size;
-                const ctx = canvas.getContext('2d');
-
-                // 1. Create circular clipping path
-                ctx.beginPath();
-                ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
-                ctx.closePath();
-                ctx.clip();
-
-                // 2. Draw the image
-                ctx.drawImage(img, 0, 0, size, size);
-
-                // 3. Draw the white border
-                ctx.beginPath();
-                ctx.arc(size/2, size/2, size/2 - 2, 0, Math.PI * 2); 
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = '#ffffff';
-                ctx.stroke();
-
-                // 4. Return the data URL
-                callback(canvas.toDataURL());
-            };
-
-            // Fallback if image fails to load
-            img.onerror = function() {
                 const canvas = document.createElement('canvas');
                 canvas.width = 60; canvas.height = 60;
                 const ctx = canvas.getContext('2d');
-                ctx.beginPath(); ctx.arc(30, 30, 30, 0, Math.PI*2);
-                ctx.fillStyle = '#999'; ctx.fill();
-                ctx.strokeStyle = 'white'; ctx.lineWidth = 4; ctx.stroke();
+                ctx.beginPath(); ctx.arc(30, 30, 30, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+                ctx.drawImage(img, 0, 0, 60, 60);
+                ctx.beginPath(); ctx.arc(30, 30, 28, 0, Math.PI * 2); 
+                ctx.lineWidth = 4; ctx.strokeStyle = '#ffffff'; ctx.stroke();
                 callback(canvas.toDataURL());
+            };
+            img.onerror = function() {
+                const canvas = document.createElement('canvas'); canvas.width=60; canvas.height=60;
+                callback(canvas.toDataURL()); 
             }
         }
 
@@ -367,127 +647,203 @@
                 zoom: 12, center: center, disableDefaultUI: true,
                 styles: [ { "featureType": "poi", "stylers": [ { "visibility": "off" } ] } ]
             });
-
             rubbleLocations.forEach(loc => {
-                // Asynchronously generate the icon via Canvas
                 createCircularIcon(loc.image, (iconData) => {
-                    const marker = new google.maps.Marker({
-                        position: { lat: loc.lat, lng: loc.lng },
-                        map: map, 
+                    new google.maps.Marker({
+                        position: { lat: loc.lat, lng: loc.lng }, map: map,
                         title: loc.name,
-                        icon: {
-                            url: iconData, 
-                            scaledSize: new google.maps.Size(50, 50),
-                            origin: new google.maps.Point(0, 0),
-                            anchor: new google.maps.Point(25, 25)
-                        }
+                        icon: { url: iconData, scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 20) }
                     });
-
-                    const infoWindow = new google.maps.InfoWindow({
-                        content: `<div style="color:black; text-align:center;"><img src="${loc.image}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; margin-bottom:5px;"><br><b>${loc.name}</b><br>${loc.tons} tons available</div>`
-                    });
-                    marker.addListener("click", () => { infoWindow.open(map, marker); });
                 });
             });
         }
+        
+        // --- FUNCTIONS RESTORED ---
+        function renderStockList(filterText = "") {
+            const list = document.getElementById('stockList');
+            list.innerHTML = '';
+            const filtered = rubbleLocations.filter(loc => loc.name.toLowerCase().includes(filterText.toLowerCase()));
+            
+            if(filtered.length === 0) {
+                 list.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">No materials found.</div>';
+                 return;
+            }
 
-        // --- NOTIFICATION & RECYCLE BIN LOGIC ---
-        function renderNotifications() {
-            const list = document.getElementById('notifList');
-            const impList = document.getElementById('importantList');
-            const badge = document.getElementById('notifBadge');
-            list.innerHTML = ""; impList.innerHTML = "";
-
-            if (notifications.length === 0) {
-                list.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">No new notifications ✅</div>';
-                badge.style.display = 'none';
-            } else { badge.style.display = 'block'; }
-
-            notifications.forEach(n => {
+            filtered.forEach(loc => {
                 const item = document.createElement('div');
-                item.className = 'notif-item';
+                item.className = 'stock-item';
                 item.innerHTML = `
-                    <div onclick="handleNotifClick('${n.page}')" style="flex:1; cursor:pointer;">
-                        <b>${n.title}</b><br><span style="color:var(--text-muted)">${n.text}</span>
-                    </div>
-                    <div class="notif-actions">
-                        <button onclick="toggleImp(${n.id})">${n.important ? '⭐' : '☆'}</button>
-                        <button onclick="deleteNotif(${n.id})">🗑️</button>
+                    <img src="${loc.image}" class="stock-img" onclick="openInspector('${loc.image}')">
+                    <div style="flex:1;">
+                        <div style="display:flex; justify-content:space-between;"><strong>${loc.name}</strong><span style="font-size:10px; color:var(--teal-primary); font-weight:bold;">LIVE</span></div>
+                        <p style="margin:2px 0; color:var(--text-muted); font-size:13px;">${loc.distance} • ${loc.tons} tons</p>
                     </div>`;
                 list.appendChild(item);
-                if (n.important) {
-                    const card = document.createElement('div'); card.className = 'important-card';
-                    card.innerHTML = `<b>${n.title}</b>: ${n.text}`; impList.appendChild(card);
-                }
             });
         }
 
-        function handleNotifClick(pageId) { switchPage(pageId); toggleNotifications(); }
+        function filterStockList() { renderStockList(document.getElementById('stockSearch').value); }
+        
+        function updateLiveStats() {
+            const box = document.getElementById('statTonsbox');
+            box.classList.add('updating');
+            setTimeout(() => box.classList.remove('updating'), 500);
+        }
+        setInterval(updateLiveStats, 5000);
 
+        function toggleNotifications() {
+            const p = document.getElementById('notifPanel');
+            p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+            renderNotifications();
+        }
+
+        function renderNotifications() {
+            const list = document.getElementById('notifList');
+            const badge = document.getElementById('notifBadge');
+            list.innerHTML = "";
+            if (notifications.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">No new notifications ✅</div>';
+                badge.style.display = 'none';
+            } else { 
+                badge.style.display = 'block'; 
+                notifications.forEach(n => {
+                    const item = document.createElement('div');
+                    item.className = 'notif-item';
+                    item.innerHTML = `<div onclick="switchPage('${n.page}')" style="cursor:pointer; flex:1;"><b>${n.title}</b><br>${n.text}</div><button onclick="deleteNotif(${n.id})" style="border:none;background:none;cursor:pointer;">🗑️</button>`;
+                    list.appendChild(item);
+                });
+            }
+        }
+        
         function deleteNotif(id) {
             const item = notifications.find(x => x.id === id);
             if (item) {
                 deletedNotifications.push(item);
                 notifications = notifications.filter(x => x.id !== id);
                 renderNotifications();
-                showToast("Moved to Recycle Bin");
+                showToast("Moved to Bin");
             }
         }
 
         function openRecycleBin() { switchPage('recycleBin'); renderBin(); }
-
         function renderBin() {
             const list = document.getElementById('binList');
             list.innerHTML = "";
-            if(deletedNotifications.length === 0) {
-                list.innerHTML = '<div style="text-align:center; padding:20px;">Bin is empty 🗑️</div>';
-                return;
-            }
+            if(deletedNotifications.length === 0) { list.innerHTML = '<div style="padding:20px;text-align:center;">Empty 🗑️</div>'; return; }
             deletedNotifications.forEach(n => {
-                const item = document.createElement('div');
-                item.className = 'list-item';
-                item.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div><b>${n.title}</b><br>${n.text}</div>
-                        <button class="btn-action" style="width:auto; padding:5px 10px; font-size:12px;" onclick="restoreNotif(${n.id})">Restore ↩️</button>
-                    </div>`;
-                list.appendChild(item);
+                list.innerHTML += `<div class="list-item" style="display:flex;justify-content:space-between;"><div><b>${n.title}</b><br>${n.text}</div><button onclick="restoreNotif(${n.id})">Restore ↩️</button></div>`;
             });
         }
-
         function restoreNotif(id) {
             const item = deletedNotifications.find(x => x.id === id);
             if(item) {
                 notifications.unshift(item);
                 deletedNotifications = deletedNotifications.filter(x => x.id !== id);
-                renderBin();
-                showToast("Message Restored");
-                renderNotifications();
+                renderBin(); renderNotifications(); showToast("Restored!");
             }
         }
 
-        function toggleNotifications() {
-            const p = document.getElementById('notifPanel');
-            p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+        function switchPage(pId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pId).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('active');
+                if (b.getAttribute('onclick').includes(pId)) b.classList.add('active');
+            });
+            if(pId === 'stats') setTimeout(initChart, 100); 
         }
-        function toggleImp(id) { const n = notifications.find(x => x.id === id); n.important = !n.important; renderNotifications(); }
 
-        // --- REPORTING LOGIC ---
+        // --- CONTACT SELLER LOGIC ---
+        function contactSeller(reportId) {
+            const report = activeReports.find(r => r.id === reportId);
+            if (!report) return;
+
+            const amount = prompt(`Enter offer amount ($) for ${report.tons} tons of ${report.material} at ${report.location}:`);
+            if (amount === null) return; // Cancelled
+            
+            if (isNaN(amount) || amount <= 0) {
+                alert("Please enter a valid numeric amount.");
+                return;
+            }
+
+            const message = prompt(`Write a message to the seller:`, `I am interested in purchasing this rubble for $${amount}.`);
+            if (message === null) return;
+
+            showToast("Offer Sent to Seller!");
+            
+            // Log interaction in notifications
+            notifications.unshift({
+                id: Date.now(), 
+                title: "Offer Sent", 
+                text: `Offered $${amount} for ${report.location}`, 
+                page: "reports"
+            });
+            renderNotifications();
+        }
+
+        // --- NEW: RENDER ACTIVE REPORTS (Card Style) ---
+        function renderActiveReports() {
+            const list = document.getElementById('reportsList');
+            list.innerHTML = "";
+            
+            activeReports.forEach(report => {
+                const riskBadge = report.risk === "Low Risk" 
+                    ? `<span class="ar-risk risk-low">LOW RISK</span>`
+                    : (report.risk ? `<span class="ar-risk" style="background:#fee2e2; color:#b91c1c;">${report.risk}</span>` : '');
+
+                const cardHTML = `
+                <div class="ar-card" onclick="contactSeller(${report.id})">
+                    <div class="ar-image-container">
+                        <img src="${report.image}" class="ar-image">
+                    </div>
+                    <div class="ar-body">
+                        <div class="ar-header">
+                            <span class="ar-title">${report.location}</span>
+                            <span class="ar-status ${report.statusClass}">${report.status} <span style="font-size:12px;">${report.status === 'Approved' ? '✓' : ''}</span></span>
+                        </div>
+                        <div class="ar-meta-row">
+                            <span class="ar-subtitle">${report.material}</span>
+                            ${riskBadge}
+                        </div>
+                        <div class="ar-details">
+                            ${report.tons} Tons • ${report.date}
+                        </div>
+                        <div style="font-size: 11px; color: var(--teal-primary); font-weight: bold; margin-top: 5px;">
+                            Click to Contact Seller ✉️
+                        </div>
+                    </div>
+                </div>`;
+                list.innerHTML += cardHTML;
+            });
+        }
+
         function submitReport() {
             const loc = document.getElementById('locInput').value;
             const tons = document.getElementById('tonInput').value;
             if (!loc || !tons) return alert("Please fill in all details");
 
-            const list = document.getElementById('reportsList');
-            const item = document.createElement('div'); item.className = 'list-item';
-            let imgTag = currentImageData ? `<img src="${currentImageData}" onclick="openInspector('${currentImageData}')" style="width:100%; border-radius:8px; margin-bottom:10px; cursor:zoom-in;">` : '';
-            item.innerHTML = `${imgTag}<strong>${loc}</strong><p style="color:gray; font-size:13px;">${tons} Tons • Status: Pending Review</p>`;
-            list.prepend(item);
-
-            const newNotif = { id: Date.now(), title: "Report Submitted", text: `Details for ${loc}`, page: "reports", important: false };
-            notifications.unshift(newNotif);
-            renderNotifications();
+            // Add new report to data array
+            const newReport = {
+                id: Date.now(),
+                location: loc,
+                material: "Mixed Debris", // Default
+                tons: tons,
+                date: "Just now",
+                status: "Pending",
+                statusClass: "status-review", // Default styling
+                risk: "Analyzing...",
+                riskClass: "",
+                radiation: "0.00",
+                toxicity: "?",
+                image: currentImageData || "https://images.unsplash.com/photo-1590664216212-62e76309e8aa?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+            };
+            
+            activeReports.unshift(newReport);
+            renderActiveReports();
+            
             showToast("Report Posted!");
+            notifications.unshift({id: Date.now(), title:"Report Sent", text: `For ${loc}`, page:"reports"});
+            renderNotifications();
             
             document.getElementById('locInput').value = ""; document.getElementById('tonInput').value = "";
             document.getElementById('previewContainer').innerHTML = "No Image Selected";
@@ -508,64 +864,13 @@
             setTimeout(() => { document.getElementById('locInput').value = "25.285, 51.531"; }, 1000);
         }
 
-        // --- LIVE STOCK RENDER (WITH PHOTOS) ---
-        function renderStockList(filterText = "") {
-            const list = document.getElementById('stockList');
-            list.innerHTML = '';
-            
-            const filtered = rubbleLocations.filter(loc => 
-                loc.name.toLowerCase().includes(filterText.toLowerCase())
-            );
-
-            if(filtered.length === 0) {
-                list.innerHTML = '<div style="text-align:center; padding:20px; color:gray;">No materials found.</div>';
-                return;
-            }
-
-            filtered.forEach(loc => {
-                const item = document.createElement('div');
-                item.className = 'list-item stock-item';
-                
-                item.innerHTML = `
-                    <img src="${loc.image}" class="stock-img" onclick="openInspector('${loc.image}')" alt="${loc.name}">
-                    <div style="flex:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                           <strong>${loc.name}</strong>
-                           <span style="font-size:10px; background:rgba(13,148,136,0.1); color:var(--teal-primary); padding:2px 6px; border-radius:4px;">LIVE</span>
-                        </div>
-                        <p style="margin:2px 0; color:var(--text-muted); font-size:13px;">${loc.distance} • ${loc.tons} tons</p>
-                        <p style="margin:0; color:var(--teal-primary); font-size:12px; font-weight:600;">Reuse Score: ${loc.score}%</p>
-                    </div>
-                `;
-                list.appendChild(item);
-            });
-        }
-
-        function filterStockList() { renderStockList(document.getElementById('stockSearch').value); }
-        function updateLiveStats() {
-            const box = document.getElementById('statTonsbox');
-            box.classList.add('updating');
-            setTimeout(() => box.classList.remove('updating'), 500);
-        }
-        setInterval(updateLiveStats, 5000);
-
-        // --- NAVIGATION ---
-        function switchPage(pId) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pId).classList.add('active');
-            document.querySelectorAll('.nav-btn').forEach(b => {
-                b.classList.remove('active');
-                if (b.getAttribute('onclick').includes(pId)) b.classList.add('active');
-            });
-            if(pId === 'stats') setTimeout(initChart, 100); 
-        }
-
         function showToast(msg) {
             const t = document.getElementById('successToast');
             t.innerText = msg; t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 2500);
         }
         function toggleDark() { document.body.classList.toggle('dark-mode'); }
+        
         function renderProfile() {
             const container = document.getElementById('profileSection');
             const logoutArea = document.getElementById('logoutSection');
@@ -584,7 +889,7 @@
         function adjustZoom(amt) { currentZoom += amt; if(currentZoom < 0.5) currentZoom = 0.5; document.getElementById('inspectImage').style.transform = `scale(${currentZoom})`; }
 
         // Init
-        renderProfile(); renderNotifications(); renderStockList();
+        renderProfile(); renderNotifications(); renderStockList(); renderActiveReports();
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao&callback=initMap" async defer></script>
 </body>
